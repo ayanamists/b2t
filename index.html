@@ -1,40 +1,520 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<link rel="stylesheet" href="dist/reset.css">
-		<link rel="stylesheet" href="dist/reveal.css">
-		<link rel="stylesheet" href="dist/theme/black.css">
+  <title>reveal.js</title>
 
-		<!-- Theme used for syntax highlighted code -->
-		<link rel="stylesheet" href="plugin/highlight/monokai.css">
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+  <link rel="stylesheet" href="dist/reset.css">
+  <link rel="stylesheet" href="dist/reveal.css">
+  <link rel="stylesheet" href="dist/theme/white.css">
 
-		<script src="dist/reveal.js"></script>
-		<script src="plugin/notes/notes.js"></script>
-		<script src="plugin/markdown/markdown.js"></script>
-		<script src="plugin/highlight/highlight.js"></script>
-		<script>
-			// More info about initialization & config:
-			// - https://revealjs.com/initialization/
-			// - https://revealjs.com/config/
-			Reveal.initialize({
-				hash: true,
+  <!-- Theme used for syntax highlighted code -->
+  <link rel="stylesheet" href="plugin/highlight/monokai.css">
+</head>
 
-				// Learn about plugins: https://revealjs.com/plugins/
-				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
-			});
-		</script>
-	</body>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <section>
+        <h1>Bytecode to TIR Algorithm</h1>
+      </section>
+      <section>
+        <section>
+          <h1>Bytecode</h1>
+          How to treat stack?
+        </section>
+        <section>
+          <ol>
+            <li>expression holder (Soot impl)</li>
+            <li>register collection (Jimple paper)</li>
+          </ol>
+        </section>
+      </section>
+      <section>
+        <section>
+          <h1>Soot Algo (1)</h1>
+        </section>
+        <section>
+          <pre><code class="java" data-trim data-noescape>
+class A {
+    public static int f(int a, int b) {
+        int sum = 0;
+        for (int i = (a > b) ? a + 1 : b + 1; i < a;) {
+            sum = sum + i;
+        }
+        return sum;
+    }
+}
+        </code></pre>
+
+        </section>
+
+        <section>
+          <div class="r-stack">
+            <div style="width: 400px">
+              <img src="./1.drawio1.svg">
+              <pre>
+                <code data-trim data-noescape="">
+                  #v_0 = 0       stack++
+                  sum = #v_0     stack--
+                  #v_0 = a       stack++
+                  #v_1 = b       stack--
+                </code>
+              </pre>
+              Stack depth == temp value number
+            </div>
+            <img class="fragment fade-out" src="./1.drawio.svg">
+          </div>
+        </section>
+
+        <section>
+          Correct?
+          <div>
+            <img src="./2.drawio.svg">
+          </div>
+        </section>
+
+        <section>
+          Quality?
+          <pre>
+            <code data-trim="" data-noescape="" class="java">
+              int t = a + b;
+              -----------
+              #v_0 = a       
+              #v_1 = b       
+              #v_0 = #v_0 + #v_1
+              t = #v_0
+            </code>
+          </pre>
+          <div class="fragment">
+            Solution: transform by dataflow analysis.
+          </div>
+        </section>
+
+        <section>
+          Type?
+          <div>
+            <img src="./3.drawio.svg">
+          </div>
+          <div class="fragment">
+            Solution: find "web"
+          </div>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h1>Soot Algo (2)</h1>
+        </section>
+
+        <section>
+          translation as dataflow analysis
+          <div>
+            <img src="./4.drawio.svg">
+          </div>
+        </section>
+
+        <section>
+          <div class="r-stack">
+            <img class="fragment fade-in-then-out" src="./4.1.drawio.svg">
+            <img class="fragment" src="./4.2.drawio.svg">
+          </div>
+        </section>
+
+        <section>
+          Merge
+          <div class="r-stack">
+            <img class="fragment fade-in-then-out" src="./5.1.drawio.svg">
+            <img class="fragment fade-in-then-out" src="./5.2.drawio.svg">
+            <img class="fragment fade-in-then-out" src="./5.3.drawio.svg">
+            <img class="fragment fade-in" src="./5.4.drawio.svg">
+          </div>
+        </section>
+
+        <section>
+          <h3>Where is variable name</h3>
+
+          <ul>
+            <li>may need <code>java -g</code></li>
+            <li>careless impl of merge (soot)</li>
+            <li>reduce instruction size</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Where is variable name</h3>
+          <div class="r-stack">
+            <div style="display: flex;" class="fragment fade-in-then-out">
+              <pre style="flex: 1; margin-right: 0.5em;">
+            <code data-trim="" data-noescape="">
+              static int f(int a, int b) 
+              {
+                  int k = a + 1;
+                  int j = k + 1;
+                  return j;
+              }
+            </code>
+            </pre>
+              <pre style="flex: 2">
+              <code data-trim="" data-noescape="">
+                static int f(int, int)
+                {
+                    int a, b, k, j;
+                    a := @parameter0: int;
+                    b := @parameter1: int;
+                    k = a + b;
+                    j = k + 1;
+                    return j;
+                }
+              </code>
+            </pre>
+            </div>
+            <div style="display: flex;" class="fragment fade-in-then-out">
+              <pre style="flex: 1; margin-right: 0.5em;">
+            <code data-trim="" data-noescape="">
+              static int f(int a, int b) 
+              {
+                  int k = (a > b) ? a + 1 : a + 1;
+                  int j = k + 1;
+                  return j;
+              }
+            </code>
+            </pre>
+              <pre style="flex: 2">
+              <code class="java" data-trim="" data-noescape="">
+                   static int f(int, int)
+                   {
+                       int a, b, $stack7, $stack4;
+                       a := @parameter0: int;
+                       b := @parameter1: int;
+                       if a <= b goto label1;
+                       $stack4 = a + 1;
+                       goto label2;
+                    label1:
+                       $stack4 = a + 1;
+                    label2:
+                       $stack7 = $stack4 + 1;
+                       return $stack7;
+                   } 
+              </code>
+            </pre>
+            </div>
+            <img class="fragment" style="height: 10em;" src="./varname1.png">
+          </div>
+          <div class="fragment">
+            <code>merge(k, k) = $stack6</code>
+            <br>
+            <code>merge(j, j) = $stack8</code>
+          </div>
+        </section>
+
+        <section>
+          <h3>Disadvantages:</h3>
+
+          <ul>
+            <li>Every block need inEdge() times visit</li>
+            <li>Complicated implementation</li>
+            <li>Eliminate copy in source</li>
+            <li>Lose variable name</li>
+          </ul>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h1>Ours</h1>
+        </section>
+
+        <section>
+          <h3>Sketch</h3>
+          <ul>
+            <li>Simulate JVM</li>
+            <li>Operand Stack ~ Stack</li>
+            <li>Exec a basic block ~ Translate a basic block</li>
+            <li>Every basic block exec only once</li>
+          </ul>
+        </section>
+
+        <section>
+          <ul>
+            <li>Pass 1: Build Infos </li>
+            <li>Pass 2: Build TIR by one traversal</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Info</h3>
+
+          \[
+          \begin{aligned}
+          \textsf{Info} ::=& I\ \{& i &: [\textsf{Instr}] \\
+          & &o &: \textsf{Var} \\
+          & &w &: [\textsf{Var}]\quad \\
+          & &r &: [\textsf{Var}]\quad \} \\
+          &| V\ \{& v &: \textsf{Var}\quad \}
+          \end{aligned}
+          \]
+
+          Total function $f : \textsf{Instr} \rightarrow \textsf{Info}$
+          <br />
+          Disjoint sets of Instr $s$ (Webs)
+        </section>
+
+        <section>
+          <h3>Exec basic block(1)</h3>
+          <div class="r-stack">
+            <!-- <img class="fragment fade-in-then-out" src="./10.1.svg"> -->
+            <img class="fragment fade-in-then-out" src="./10.2.drawio.svg">
+            <!-- <img class="fragment fade-in" src="./10.3.drawio.svg"> -->
+          </div>
+        </section>
+
+        <!--
+
+        <section>
+          <h3>Exec basic block(2)</h3>
+          <div class="r-stack">
+            <img class="fragment fade-in-then-out" src="11.drawio.svg">
+            <img class="fragment fade-in-then-out" src="8.1.drawio.svg">
+            <img class="fragment fade-in-then-out" src="8.2.drawio.svg">
+            <img class="fragment" src="8.3.drawio.svg">
+          </div>
+        </section>
+
+      -->
+
+        <section>
+          <h3>Local Read/Write</h3>
+          <div class="r-stack">
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+            iconst_1
+            iload_0
+            iadd
+            istore_0
+            -----------
+            0    ==> Var v
+
+            1    ==> 1. Var a
+                     2. $0 = a
+
+            2, 3 ==> 1. $1 = l0 + l1,
+                        a = $1 
+                     2. a = l0 + l1,
+                        null
+
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+            <code class="java" data-noescape="" data-trim="">
+              iload_0
+              iconst_1
+              istore_0
+              istore_1
+              -----------
+              $0 = a
+              a = $const_1
+              b = $0
+            </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+            <code class="java" data-noescape="" data-trim="">
+              iload_0
+              iconst_1
+              iadd
+              iconst_2
+              istore_0
+              ...
+              istore_0
+              -----------
+              $0 = a + $const_1
+              a = $const_2
+              ...
+              a = $0
+            </code>
+            </pre>
+
+            <pre class="fragment fade-in-then-out">
+            <code class="java" data-noescape="" data-trim="">
+              iload_0
+              iconst_1
+              iadd
+              iload_0
+              istore_1
+              ...
+              istore_0
+              -----------
+              $0 = a + $const_1
+              b = a
+              ...
+              a = $0
+            </code>
+            </pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Local Variable Read/Write Rules</h3>
+
+          <div class="r-stack">
+            <div class="fragment fade-in-then-out">
+              <p>
+                Read (i = load_x), $i \in S$ </p>
+
+              <p>
+                If $\forall i \in S, \forall i' \in \textsf{Use}(i), \forall (p = i \rightarrow i'),
+                \textsf{store\_}x \notin p$,
+                assign variable $x$.
+              </p>
+
+              <p>
+                Else, assign temp variable
+              </p>
+              </ul>
+            </div>
+
+            <div class="fragment fade-in-then-out">
+              <p>
+                (Maybe) write $i \in S$ </p>
+
+              <p>
+                If $\forall i \in S, \forall i' \in \textsf{Use}(i), i' = \textsf{store\_}o,
+                \forall (p = i \rightarrow i'),
+                \textsf{store\_}o \notin p \land \textsf{load\_}o \notin p$,
+                assign variable $o$.
+              </p>
+
+              <p>
+                Else, assign temp variable
+              </p>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Exec Branch</h3>
+          <div class="r-stack">
+            <img class="fragment fade-in-then-out" src="12.drawio.svg">
+            <img class="fragment fade-in-then-out" src="12.2.drawio.svg">
+            <img class="fragment fade-in-then-out" src="12.3.drawio.svg">
+            <img class="fragment fade-in" src="13.drawio.svg">
+          </div>
+
+          <div class="fragment">
+            <ul>
+              <li>All edge with same initial stack</li>
+              <li>Every basic block only exec once</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          Typing, variable splitting on the fly
+          <div>
+            <img src="./9.drawio.svg">
+          </div>
+          \[
+          \mathsf{Close}(b) = \bigcup_{i \in \mathsf{Close}(b)} \{ b' | \exists b (b \rightarrow i \land
+          b \rightarrow b') \}
+          \]
+        </section>
+
+        <section>
+          <h3>Extra copy</h3>
+
+          <div>
+            <ul>
+              <li><code>a = #v</code></li>
+              <li><code>#v = a</code></li>
+              <li><code>a = $v</code></li>
+              <li><code>$v = a</code></li>
+              <li><code>$v = #v</code></li>
+              <li><code>#v = $v</code></li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Extra copy</h3>
+
+          <div>
+            <ul>
+              <li>Mutiple use (<code>dup</code>)</li>
+              <li>(#) variable</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Extra copy (must be)</h3>
+
+          <div class="r-stack">
+            <img class="fragment fade-in-then-out" src="14.0.drawio.svg">
+            <img class="fragment fade-in-then-out" src="14.0.2.drawio.svg">
+            <img class="fragment fade-in-then-out" src="14.1.drawio.svg">
+            <img class="fragment fade-in-then-out" src="14.2.drawio.svg">
+            <img class="fragment" src="14.3.drawio.svg">
+          </div>
+
+        </section>
+
+        <section>
+          <h3>Extra copy (may be)</h3>
+
+          <div class="r-stack">
+            <img class="fragment">
+          </div>
+        </section>
+
+        <section>
+          <div>Initial stack is not empty?</div>
+          <ol class="fragment">
+            <li>two or more prior node</li>
+            <li>two or more initial stack</li>
+            <li>only few chance* they are equiv</li>
+          </ol>
+
+          <div class="fragment" style="font-size: 0.4em; margin-top: 0.2em;">
+            *(eclipse, antlr, chart, jython): merge 8242 times, 49 one same, 25 real same (need not merge)
+          </div>
+          <div class="fragment" style="margin-top: 30px;">Why not just alloc variables for them?</div>
+        </section>
+
+      </section>
+    </div>
+  </div>
+
+  <script src="dist/reveal.js"></script>
+  <script src="plugin/notes/notes.js"></script>
+  <script src="plugin/markdown/markdown.js"></script>
+  <script src="plugin/math/math.js"></script>
+  <script src="plugin/highlight/highlight.js"></script>
+  <script>
+    // More info about initialization & config:
+    // - https://revealjs.com/initialization/
+    // - https://revealjs.com/config/
+    Reveal.initialize({
+      hash: true,
+      katex: {
+        version: 'latest',
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      },
+      // Learn about plugins: https://revealjs.com/plugins/
+      plugins: [RevealMarkdown, RevealHighlight, RevealNotes, RevealMath.KaTeX]
+    });
+  </script>
+</body>
+
 </html>
