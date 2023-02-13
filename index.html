@@ -250,27 +250,28 @@ class A {
 
           \[
           \begin{aligned}
-          \textsf{Info} ::=& I\ \{& i &: [\textsf{Instr}] \\
+          \textsf{Info} ::=& \ \{& i &: [\textsf{Instr}] \\
           & &o &: \textsf{Var} \\
           & &w &: [\textsf{Var}]\quad \\
           & &r &: [\textsf{Var}]\quad \} \\
-          &| V\ \{& v &: \textsf{Var}\quad \}
           \end{aligned}
           \]
 
-          Total function $f : \textsf{Instr} \rightarrow \textsf{Info}$
+          Function $f : \textsf{Instr} \rightarrow \textsf{Info}$
           <br />
           Disjoint sets of Instr $s$ (Webs)
         </section>
 
+        <!--
         <section>
           <h3>Exec basic block(1)</h3>
           <div class="r-stack">
-            <!-- <img class="fragment fade-in-then-out" src="./10.1.svg"> -->
-            <img class="fragment fade-in-then-out" src="./10.2.drawio.svg">
-            <!-- <img class="fragment fade-in" src="./10.3.drawio.svg"> -->
-          </div>
-        </section>
+            -- <img class="fragment fade-in-then-out" src="./10.1.svg">
+        <img class="fragment fade-in-then-out" src="./10.2.drawio.svg">
+        -- <img class="fragment fade-in" src="./10.3.drawio.svg">
+    </div>
+    </section>
+    -->
 
         <!--
 
@@ -291,71 +292,209 @@ class A {
           <div class="r-stack">
             <pre class="fragment fade-in-then-out">
           <code class="java" data-trim="" data-noescape="">
-            iconst_1
-            iload_0
-            iadd
-            istore_0
-            -----------
-            0    ==> Var v
-
-            1    ==> 1. Var a
-                     2. $0 = a
-
-            2, 3 ==> 1. $1 = l0 + l1,
-                        a = $1 
-                     2. a = l0 + l1,
-                        null
-
+              |               | pop   | push   | instr
+            -------------------------------------------
+            0 |   iconst_1    |       | c0     | 
+            1 |   iload_0     |       | a      |
+            2 |   iadd        | c0, a | $1     | $1 = c0 + a
+            3 |   istore_0    |  $1   |        | a = $1
+          </code>
+          </pre>
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | pop   | push   | instr
+            -------------------------------------------
+            0 |   iconst_1    |       | c0     | 
+            1 |   iload_0     |       | $1     | $1 = a
+            2 |   iadd        | c0, a | $2     | $2 = c0 + $1
+            3 |   istore_0    |  $2   |        | a = $2
           </code>
           </pre>
 
             <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | pop   | push   | instr
+            -------------------------------------------
+            0 |   iconst_1    |       | c0     | 
+            1 |   iload_0     |       | a      |
+            2 |   iadd        | c0, a |        | a = c0 + a
+            3 |   istore_0    |       |        |
+          </code>
+          </pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Local Read/Write</h3>
+          <div class="r-stack">
+            <pre>
+          <code class="java" data-trim="" data-noescape="">
+              |               | use      | var  | instr
+            -------------------------------------------
+            0 |   iconst_1    |  {}      | c0   | 
+            1 |   iload_0     |  {}      | a    |
+            2 |   iadd        | {l0, l1} | a    | a = c0 + a
+            3 |   istore_0    | {l2}     |      |
+          </code>
+          </pre>
+          </div>
+
+          <div>
+            How to decide instr:
+          </div>
+          <ul>
+            <li>load_x : <code>var = x</code>, if $\textsf{var} \neq x$ </li>
+            <li>store_x : <code>x = use[0].var</code>, if $\textsf{use}[0].\textsf{var} \neq x$ </li>
+            <li>others : <code>var = f(use[0].var, use[1].var, ...)</code></li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Local Read/Write</h3>
+          <div class="r-stack">
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | use      | var  | stack      |
+            -------------------------------------------------
+            0 |   iconst_1    |  {}      | c0   |   {l0}     |
+            1 |   iload_0     |  {}      | ?    |            |
+            2 |   iadd        | {?, ?}   | ?    |            |
+            3 |   istore_0    | {?}      |      |            |
+          </code>
+          </pre>
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | use      | var  | stack      |
+            -------------------------------------------------
+            0 |   iconst_1    |  {}      | c0   |            |
+            1 |   iload_0     |  {}      | a    |  {l0, l1}  |
+            2 |   iadd        | {?, ?}   | ?    |            |
+            3 |   istore_0    | {?}      |      |            |
+          </code>
+          </pre>
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | use      | var  | stack      |
+            -------------------------------------------------
+            0 |   iconst_1    |  {}      | c0   |            |
+            1 |   iload_0     |  {}      | a    |            |
+            2 |   iadd        | {l0, l1} | ?    |   {l2}     |
+            3 |   istore_0    | {?}      |      |            |
+          </code>
+          </pre>
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               | use      | var  | stack      |
+            -------------------------------------------------
+            0 |   iconst_1    |  {}      | c0   |            |
+            1 |   iload_0     |  {}      | a    |            |
+            2 |   iadd        | {l0, l1} | a    |            |
+            3 |   istore_0    | {l2}     |      |    {}      |
+          </code>
+          </pre>
+          </div>
+
+        </section>
+
+        <section>
+          <h3>Webs</h3>
+
+          <div>
+            <img src="webs.drawio.svg">
+          </div>
+
+          \[
+          \frac{i_1 \in S \quad i_1 \in i_2.\textsf{use}[k]}{\forall i \in i_2.\textsf{use}[k], i \in S}
+          \]
+
+          <div>
+            If $i_1 \in S$ and $i_2 \in S$, $i_1.\textsf{var} = i_2.\textsf{var}$
+          </div>
+        </section>
+
+        <section>
+          <h3>Webs</h3>
+          <img src="swap.drawio.svg">
+        </section>
+
+        <section>
+          <h3>Instruction Order</h3>
+
+          <div>Assumptions:</div>
+
+          <ul>
+            <li>Every stack item only pushed by one instr</li>
+            <li>stack property: FILO</li>
+          </ul>
+
+          <div>
+            <em>Simiply: each item only occurs in one stack height</em>
+          </div>
+
+          <div>
+            <img src="./order.drawio.svg" width="350">
+          </div>
+
+          \[\textsf{Prev}(a, b) \rightarrow \neg\textsf{Prev}(b, a)\]
+        </section>
+
+        <section>
+          <h3>Instruction Order</h3>
+
+          <img src="./order2.drawio.svg" width="250">
+
+          \[
+          \textsf{Prev}(a, b) \land a \in S \rightarrow b \notin S
+          \]
+        </section>
+
+        <section>
+          <h3>Local Variable Read/Write Rules</h3>
+          <div>
+            <ul>
+              <li><code>load_x</code> : move read down</li>
+              <li><code>store_x</code> : move write up</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Local Variable Read/Write Rules</h3>
+
+          <div class="r-stack">
+            <pre class="fragment fade-in-then-out">
             <code class="java" data-noescape="" data-trim="">
-              iload_0
-              iconst_1
-              istore_0
-              istore_1
-              -----------
-              $0 = a
-              a = $const_1
-              b = $0
+                          |   right   |  wrong  
+              --------------------------------
+              iload_0 <---+   $1 = a  |  
+              iconst_1    |   a = 1   |  a = 1
+              istore_0    |           |
+              istore_1 ---+   b = $1  |  b = a
             </code>
           </pre>
-
             <pre class="fragment fade-in-then-out">
             <code class="java" data-noescape="" data-trim="">
-              iload_0
-              iconst_1
-              iadd
-              iconst_2
-              istore_0
-              ...
-              istore_0
-              -----------
-              $0 = a + $const_1
-              a = $const_2
-              ...
-              a = $0
+                         |   right    |  wrong  
+              ----------------------------------
+              iload_0    |            |  
+              iconst_1   |            |
+              iadd       | $1 = a + 1 |  a = a + 1
+              iload_0    |            |
+              istore_1   | b = a      |  b = a
+              istore_0   | a = $1     |
             </code>
-            </pre>
-
-            <pre class="fragment fade-in-then-out">
-            <code class="java" data-noescape="" data-trim="">
-              iload_0
-              iconst_1
-              iadd
-              iload_0
-              istore_1
-              ...
-              istore_0
-              -----------
-              $0 = a + $const_1
-              b = a
-              ...
-              a = $0
-            </code>
-            </pre>
+          </pre>
           </div>
+        </section>
+
+        <section>
+          <h3>Local Variable Read/Write Rules</h3>
+          <table>
+            <tr>
+              <td><img src="race.drawio.svg" width="200px"></td>
+              <td><img src="race2.drawio.svg" width="200px"></td>
+            </tr>
+          </table>
         </section>
 
         <section>
@@ -395,6 +534,148 @@ class A {
               </ul>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h3>Local Variable Read/Write Rules</h3>
+
+          <div>
+            <img src="race3.drawio.svg" width="250px">
+          </div>
+        </section>
+
+        <section>
+          <h3>Record r/w, decide var</h3>
+
+          <div class="r-stack">
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  ?   |   []       |
+            1 |   iconst_1    |  {}      |  {}   |  ?   |            |
+            2 |   iadd        |  {}      |  {}   |  ?   |            |
+            3 |   iload_0     |  {}      |  {}   |  ?   |            |
+            4 |   istore_1    |  {}      |  {}   |      |            |
+            5 |   istore_0    |  {}      |  {}   |      |            |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {}      |  {}   |  ?   |  [l1, l0]  |
+            2 |   iadd        |  {}      |  {}   |  ?   |            |
+            3 |   iload_0     |  {}      |  {}   |  ?   |            |
+            4 |   istore_1    |  {}      |  {}   |      |            |
+            5 |   istore_0    |  {}      |  {}   |      |            |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {}      |  {}   | c0   |  [l1, l0]  |
+            2 |   iadd        |  {}      |  {}   |  ?   |  [l2]      |
+            3 |   iload_0     |  {}      |  {}   |  a   |            |
+            4 |   istore_1    |  {}      |  {}   |      |            |
+            5 |   istore_0    |  {}      |  {}   |      |            |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {a}     |  {}   | c0   |  [l1, l0]  |
+            2 |   iadd        |  {a}     |  {}   |  ?   |  [l2]      |
+            3 |   iload_0     |  {}      |  {}   |  a   |  [l3, l2]  |
+            4 |   istore_1    |  {}      |  {}   |      |            |
+            5 |   istore_0    |  {}      |  {}   |      |            |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {a}     |  {}   | c0   |  [l1, l0]  |
+            2 |   iadd        |  {a}     |  {a}  |  ?   |  [l2]      |
+            3 |   iload_0     |  {}      |  {}   |  b   |  [l3, l2]  |
+            4 |   istore_1    |  {}      |  {}   |      |  [l2]      |
+            5 |   istore_0    |  {}      |  {}   |      |            |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {a}     |  {}   | c0   |  [l1, l0]  |
+            2 |   iadd        |  {a}     |  {a}  |  a   |  [l2]      |
+            3 |   iload_0     |  {}      |  {}   |  b   |  [l3, l2]  |
+            4 |   istore_1    |  {}      |  {}   |      |  [l2]      |
+            5 |   istore_0    |  {}      |  {}   |      |  []        |
+          </code>
+          </pre>
+
+            <pre class="fragment fade-in-then-out">
+          <code class="java" data-trim="" data-noescape="">
+              |               |  read    | write | var  | stack      |
+            ----------------------------------------------------------
+            0 |   iload_0     |  {}      |  {}   |  a   |  [l0]      |
+            1 |   iconst_1    |  {a}     |  {}   | c0   |  [l1, l0]  |
+            2 |   iadd        |  {a}     |  {a}  |  a   |  [l2]      | $1 = a + c0
+            3 |   iload_0     |  {}      |  {}   |  b   |  [l3, l2]  | b = a
+            4 |   istore_1    |  {}      |  {}   |      |  [l2]      |
+            5 |   istore_0    |  {}      |  {}   |      |  []        |
+          </code>
+          </pre>
+
+          </div>
+        </section>
+
+        <section>
+          <h3>Algo</h3>
+
+          <pre>
+          <code class="python" data-noescape="" data-trim="">
+            while worklist != empty:
+              arrow = worklist.poll()
+              merge(arrow.stack, arrow.target)
+              if ! visit(arrow.target):
+                stack = exec(target, arrow.stack)
+                for i in target.succ:
+                  worklist.add(Arrow { i, stack })
+          </code>
+          </pre>
+        </section>
+
+        <section>
+          <h3>Algo</h3>
+
+          <pre>
+          <code class="python" data-noescape="" data-trim="">
+            merge(new, target):
+              old = target.stack
+              if old is null:
+                target.stack = new
+              else:
+                for i in old.size():
+                  union(old[i], new[i])
+                  old[i] = find(old[i])
+                  old[i].write = setUnion(old[i].write, new[i].write)
+                  old[i].read = setUnion(old[i].read, new[i].read)
+                  varMerge(old[i], new[i])
+          </code>
+          </pre>
         </section>
 
         <section>
